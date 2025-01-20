@@ -75,6 +75,12 @@ public:
         dataFile.close();
         return line.toInt();
     }
+    // Method to retrieve a random file name from the db
+    String getRandomFileName(){
+        int n_files = this.getFileCount();
+        int r_file = random(0, n_files);
+        return this.getFileName(r_file);
+    }
 
     // Method to retrieve a file name by index
     String getFileName(int index) {
