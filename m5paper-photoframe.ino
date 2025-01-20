@@ -11,10 +11,11 @@
 #include <JPEGDEC.h>
 #include "filelistdb.h"
 
-#define SLEEP_HOURS 1
+#define EINK_REFRESH_DELAY 500
+#define REFRESH_TIME 600
 
-// _BackgroundBrightness fills the border on small images: 0: White... 15: black
-#define _BackgroundBrightness 0
+// BACKGROUND_BRIGHTNESS fills the border on small images: 0: White... 15: black
+#define BACKGROUND_BRIGHTNESS 0
 
 JPEGDEC jpeg;
 M5EPD_Canvas canvas(&M5.EPD);
@@ -93,7 +94,7 @@ int getBatteryPcnt(){
 }
 
 void drawMessage(String msg){
-    canvas.fillCanvas(_BackgroundBrightness);
+    canvas.fillCanvas(BACKGROUND_BRIGHTNESS);
     canvas.setTextSize(3);
     canvas.drawString(msg, 64, 256, 1);
     canvas.pushCanvas(0, 0, UPDATE_MODE_GL16);
@@ -145,11 +146,9 @@ int JPEGDraw(JPEGDRAW *pDraw) {
 }
 
 bool loadRandomImage() {
-  int n_files = db.getFileCount();
-  int r_file = random(0, n_files);
   M5.EPD.Clear(1);
   String fullname = "/";
-  fullname += db.getFileName(r_file);
+  fullname += db.getRandomFileName();
   Serial.printf("Filename %s\n", fullname);
   return drawImage((char *) fullname.c_str());
 }
@@ -226,7 +225,7 @@ bool drawImage(char *fileName) {
   }
 
   // For when this image is smaller than the last - make sure no old image can be seen on the boundaries.
-  canvas.fillCanvas(_BackgroundBrightness);
+  canvas.fillCanvas(BACKGROUND_BRIGHTNESS);
   offsetX = (960 - width) >> 1;
   offsetY = (540 - height) >> 1;
   jpeg.setPixelType(FOUR_BIT_DITHERED);
@@ -237,13 +236,13 @@ bool drawImage(char *fileName) {
   return true;
 }
 
-void sleep(){
+void sleep(int secs){
   // https://cat-in-136.github.io/2022/05/note-m5paper-power-supply-management.html
   M5.disableEPDPower();
   M5.disableEXTPower();
-  M5.shutdown(600);
+  M5.shutdown(secs);
   Serial.println("Deep sleep failed, using light sleep");
-  delay(60*1000);
+  delay(secs*100);
   ESP.restart();
 }
 
@@ -260,19 +259,18 @@ void setup() {
     char buffer[64];
     sprintf(buffer, "Generating %s", db.getStorageFileName());
     drawMessage(buffer);
-    delay(500);
+    delay(EINK_REFRESH_DELAY);
     db.saveFileList();
   }
 
   while (!loadRandomImage()){
     Serial.println("Error loading image");
     drawMessage("Error loading image");
-    delay(500);
+    delay(EINK_REFRESH_DELAY);
     sleep();
   }
-  Serial.println("Delay");
-  delay(500);
-  sleep();
+  delay(EINK_REFRESH_DELAY);
+  sleep(REFRESH_TIME);
 }
 
 void loop() { }
